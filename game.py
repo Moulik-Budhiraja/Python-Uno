@@ -5,18 +5,22 @@ import pygame
 from constants import *
 from constructors import *
 from math import cos, pi
+import re
+from client import Client
+import threading
 
 pygame.init()
 
 
 class Scale:
-    def __init__(self, wi, hi, wf, hf, object, time: float):
+    def __init__(self, wi, hi, wf, hf, object, time: float, start_time=0):
         self.wi = wi
         self.hi = hi
         self.wf = wf
         self.hf = hf
         self.object = object
         self.time = time
+        self.start_time = start_time
 
         self.move = False
 
@@ -43,6 +47,9 @@ class Scale:
         self.end = self.offset + self.time
 
     def update(self):
+        if self.start_time != 0 and self.start_time < time.time() and not self.move:
+            self.start()
+
         if self.move:
             if time.time() > self.end:
                 self.object.width = self.wf
@@ -70,13 +77,14 @@ class Scale:
 
 
 class Transition:
-    def __init__(self, xi, yi, xf, yf, object, time: float):
+    def __init__(self, xi, yi, xf, yf, object, time: float, start_time=0):
         self.xi = xi
         self.yi = yi
         self.xf = xf
         self.yf = yf
         self.object = object
         self.time = time
+        self.start_time = start_time
 
         self.move = False
 
@@ -103,6 +111,9 @@ class Transition:
         self.end = self.offset + self.time
 
     def update(self):
+        if self.start_time != 0 and self.start_time < time.time() and not self.move:
+            self.start()
+
         if self.move:
             if time.time() > self.end:
                 self.object.x = self.xf
@@ -193,15 +204,36 @@ class Game:
             Constants.WIDTH // 2 - self.connect.width // 2, self.connect.y,
             self.connect, 0.4)
 
+        self.connect_transition2 = Transition(
+            self.connect_transition.xf, self.connect_transition.yf,
+            850, self.connect_transition.yf,
+            self.connect, 0.4)
+
+        self.ip_input_transition2 = Transition(
+            self.ip_input_transition.xf, self.ip_input_transition.yf,
+            -400, self.ip_input_transition.yf,
+            self.ip_input, 0.4)
+
+        self.uno_logo_transition2 = Transition(
+            self.uno_logo_transition.xf, self.uno_logo_transition.yf,
+            self.uno_logo_transition.xf, -250,
+            self.uno_logo, 0.4)
+
         self.load = Loading()
 
         self.active_textbox = None
 
+        self.wait_for_animations = False
+
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    try:
+                        self.client.disconnect()
+                    except AttributeError:
+                        pass
                     pygame.quit()
-                    return
+                    exit()
 
                 if event.type == pygame.MOUSEMOTION:
                     self.start.is_hover(event.pos, enlarge=-10)
@@ -224,6 +256,21 @@ class Game:
                         if self.ip_input.is_clicked(event.pos):
                             self.active_textbox = self.ip_input
 
+                        if self.connect.is_clicked(event.pos):
+                            if not re.search(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", self.ip_input.text):
+                                self.ip_input.text = ""
+                                self.invalid_ip_alert.show = True
+                                self.invalid_ip_transition.start()
+
+                            else:
+                                self.invalid_ip_alert.show = False
+                                self.load.show = True
+                                self.client = Client(self.ip_input.text)
+                                self.player = []
+                                connection = threading.Thread(
+                                    target=self.client.connect, args=(self.player,))
+                                connection.start()
+
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_BACKSPACE:
                         self.active_textbox.deleting = True
@@ -235,12 +282,45 @@ class Game:
                     if event.key == pygame.K_BACKSPACE:
                         self.active_textbox.deleting = False
 
+            try:
+                if self.client.success:
+                    self.client.success = False
+                    self.load.show = False
+                    self.uno_logo_transition2.start()
+                    self.ip_input_transition2.start()
+                    self.connect_transition2.start()
+                    self.wait_for_animations = time.time() + 0.4
+                    self.player = self.player[0]
+
+                elif threading.active_count() == 1 and self.client.success is False:
+                    self.load.show = False
+                    self.invalid_ip_alert.show = True
+                    self.invalid_ip_transition.start()
+                    self.client.success = None
+
+            except AttributeError:
+                pass
+
+            try:
+                if self.client.connected:
+                    if (not self.wait_for_animations) or self.wait_for_animations < time.time():
+                        self.wait_for_animations = False
+                        self.ip_input.show = False
+                        self.connect.show = False
+                        self.uno_logo.show = False
+
+            except AttributeError:
+                pass
+
             self.uno_logo_transition.update()
             self.uno_logo_scale.update()
             self.ip_input.update()
             self.ip_input_transition.update()
             self.connect_transition.update()
             self.invalid_ip_transition.update()
+            self.ip_input_transition2.update()
+            self.connect_transition2.update()
+            self.uno_logo_transition2.update()
             self.load.update()
 
             window.draw()

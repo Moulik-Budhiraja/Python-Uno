@@ -14,15 +14,39 @@ class Client:
         self.HEADER = 64
         self.FORMAT = "utf-8"
 
-    def connect(self) -> None:
+        self.send_msg_queue = []
+        self.receive_msg_queue = []
+
+    def connect(self, lst) -> 'Player':
         """
             Establishes a connection to the server"""
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect(self.ADDR)
+
+        self.success = False
+
+        try:
+            self.client.connect(self.ADDR)
+        except TimeoutError:
+            lst.append(False)
+            return
+
+        except ConnectionRefusedError:
+            lst.append(False)
+            return
+
+        self.success = True
+        self.connected = True
 
         msg = self.receive_msg()
 
-        return Player(msg.content["id"])
+        send_msgs = threading.Thread(target=self.send_msg_thread, daemon=True)
+        send_msgs.start()
+
+        receive_msgs = threading.Thread(
+            target=self.receive_msg_thread, daemon=True)
+        receive_msgs.start()
+
+        lst.append(Player(msg.content["id"]))
 
     def disconnect(self) -> None:
         """
@@ -41,6 +65,17 @@ class Client:
             msg = Message("Server", MessageType.BLANK)
 
         return msg
+
+    def send_msg_thread(self):
+        while True:
+            if len(self.send_msg_queue) > 0:
+                msg = self.send_msg_queue.pop(0)
+                self.send_msg(msg)
+
+    def receive_msg_thread(self):
+        while True:
+            msg = self.receive_msg()
+            self.receive_msg_queue.append(msg)
 
     def send_msg(self, msg: Message):
         """

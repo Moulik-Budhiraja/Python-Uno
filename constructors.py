@@ -68,13 +68,19 @@ class TextBox:
         self.border.height = value
 
     def add_ch(self, ch):
+        if not self.active:
+            return
+
         if self.max_input is not None and len(self.text) >= self.max_input:
             return
 
-        if re.search(r"^\w+$", ch):
+        if re.search(r"^[\w.]+$", ch):
             self.text += ch
 
     def del_ch(self):
+        if not self.active:
+            return
+
         if len(self.text) > 0:
             self.text = self.text[:-1]
 
@@ -157,6 +163,7 @@ class Loading:
         if self.show_for_start is not None:
             if self.show_for_time + self.show_for_start < time.time():
                 self.show = False
+                self.show_for_start = None
 
     def show_for(self, seconds):
         self.show_for_time = seconds

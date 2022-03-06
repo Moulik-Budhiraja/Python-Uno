@@ -14,6 +14,8 @@ class Image:
         self.width = width or self.image.get_width()
         self.height = height or self.image.get_height()
 
+        self.show = True
+
     @property
     def width(self):
         return self.image.get_width()
@@ -33,7 +35,8 @@ class Image:
             self.original_image, (self.width, int(value)))
 
     def draw(self, win):
-        win.blit(self.image, (self.x, self.y))
+        if self.show:
+            win.blit(self.image, (self.x, self.y))
 
 
 class Constants:
