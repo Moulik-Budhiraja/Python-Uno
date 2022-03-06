@@ -129,17 +129,17 @@ class Window:
         self.width = width
         self.height = height
 
-        self.start = Button(pygame.Rect(
-            self.width // 2 - 100, self.height // 2 + 50, 200, 76), "Start", show=True)
-
     def draw(self):
-        Assets.BACKGROUND.draw(self.WIN)
-        Assets.UNO_LOGO.draw(self.WIN)
+        game.background.draw(self.WIN)
+        game.uno_logo.draw(self.WIN)
 
         game.invalid_ip_alert.draw(self.WIN)
         game.load.draw(self.WIN)
 
-        self.start.draw(self.WIN, (245, 93, 66), (224, 224, 224), 15)
+        game.ip_input.draw(self.WIN, (47, 222, 120), (12, 176, 81))
+
+        game.start.draw(self.WIN, (245, 93, 66), (224, 224, 224), 15)
+        game.connect.draw(self.WIN, (245, 93, 66), (224, 224, 224), 15)
 
     def update(self):
         pygame.display.update()
@@ -156,20 +156,46 @@ class Game:
 
         clock = pygame.time.Clock()
 
-        Assets.UNO_LOGO.x = Constants.WIDTH // 2 - Assets.UNO_LOGO.width // 2
-        Assets.UNO_LOGO.y = 20
+        self.start = Button(pygame.Rect(
+            Constants.WIDTH // 2 - 100, Constants.HEIGHT // 2 + 50, 200, 76), "Start", show=True)
+
+        self.uno_logo.x = Constants.WIDTH // 2 - self.uno_logo.width // 2
+        self.uno_logo.y = 20
 
         self.uno_logo_scale = Scale(
-            Assets.UNO_LOGO.width, Assets.UNO_LOGO.height,
-            Assets.UNO_LOGO.width // 1.5, Assets.UNO_LOGO.height // 1.5,
-            Assets.UNO_LOGO, 1)
+            self.uno_logo.width, self.uno_logo.height,
+            self.uno_logo.width // 1.5, self.uno_logo.height // 1.5,
+            self.uno_logo, 0.4)
+
+        self.uno_logo_transition = Transition(
+            self.uno_logo.x, self.uno_logo.y,
+            Constants.WIDTH // 2 -
+            (self.uno_logo.width // 1.5 // 2), self.uno_logo.y,
+            self.uno_logo, 0.4)
 
         self.invalid_ip_alert = Alert(Constants.WIDTH - 10 - 250,
                                       450, 250, 125, "Invalid IP")
         self.invalid_ip_transition = Transition(
             10, 600, 10, 475, self.invalid_ip_alert, 0.4)
 
+        self.ip_input = TextBox(400, 60, Constants.WIDTH // 2 - 400 //
+                                2, Constants.HEIGHT // 2 - 60 // 2, "Enter IP", 15)
+
+        self.ip_input_transition = Transition(850, self.ip_input.y,
+                                              Constants.WIDTH // 2 - self.ip_input.width // 2, self.ip_input.y,
+                                              self.ip_input, 0.4)
+
+        self.connect = Button(pygame.Rect(-50, 400, 150, 75),
+                              "Connect", show=False)
+
+        self.connect_transition = Transition(
+            self.connect.x, self.connect.y,
+            Constants.WIDTH // 2 - self.connect.width // 2, self.connect.y,
+            self.connect, 0.4)
+
         self.load = Loading()
+
+        self.active_textbox = None
 
         while True:
             for event in pygame.event.get():
@@ -178,15 +204,42 @@ class Game:
                     return
 
                 if event.type == pygame.MOUSEMOTION:
-                    window.start.is_hover(event.pos, enlarge=-10)
+                    self.start.is_hover(event.pos, enlarge=-10)
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
-                        if window.start.is_clicked(event.pos):
-                            window.start.show = False
-                            self.uno_logo_scale.start()
+                        if self.start.is_clicked(event.pos):
+                            self.load.show_for(0.4)
 
+                            self.start.show = False
+                            self.uno_logo_scale.start()
+                            self.uno_logo_transition.start()
+
+                            self.ip_input.show = True
+                            self.ip_input_transition.start()
+
+                            self.connect.show = True
+                            self.connect_transition.start()
+
+                        if self.ip_input.is_clicked(event.pos):
+                            self.active_textbox = self.ip_input
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_BACKSPACE:
+                        self.active_textbox.deleting = True
+
+                    elif self.active_textbox is not None:
+                        self.active_textbox.add_ch(event.unicode)
+
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_BACKSPACE:
+                        self.active_textbox.deleting = False
+
+            self.uno_logo_transition.update()
             self.uno_logo_scale.update()
+            self.ip_input.update()
+            self.ip_input_transition.update()
+            self.connect_transition.update()
             self.invalid_ip_transition.update()
             self.load.update()
 
