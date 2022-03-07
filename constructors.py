@@ -352,8 +352,17 @@ class Card:
         self.image = Image(pygame.image.load(self.path))
         self.x = x
         self.y = y
-        self.width = width
-        self.height = height
+
+        if width is None:
+            self.width = self.image.width
+        else:
+            self.width = width
+
+        if height is None:
+            self.height = self.image.height
+
+        else:
+            self.height = height
 
         self.show = False
 
@@ -370,7 +379,7 @@ class Card:
             elif self.name[4:6] in ["50", "51", "52"]:
                 self.color = "B"
             elif self.name[4:6] in ["53", "54", "55", "56"]:
-                self.color = None
+                self.color = "W"
 
         if int(self.name[4:6]) in range(1, 41):
             self.number = self.name[5]
@@ -378,14 +387,14 @@ class Card:
             if int(self.name[5]) % 3 == 0:
                 self.number = "flip"
             elif int(self.name[5]) % 3 == 1:
-                self.number = "pick2"
+                self.number = "draw2"
             elif int(self.name[5]) % 3 == 2:
                 self.number = "skip"
 
         elif int(self.name[4:6]) in range(53, 55):
             self.number = "wild"
         elif int(self.name[4:6]) in range(55, 57):
-            self.number = "wild4"
+            self.number = "draw4"
 
     def __repr__(self):
         return f"Card({self.color}{self.number})"

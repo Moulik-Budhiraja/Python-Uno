@@ -179,10 +179,15 @@ class Game:
         self.uno_logo = Image(Assets.UNO_LOGO)
         self.background = Image(Assets.BACKGROUND)
         self.loading = Image(Assets.LOADING)
+        self.card_back = Image(Assets.CARD_BACK)
 
-        # self.cards = [Card(i) for i in Assets.CARDS]
-        # for i in self.cards:
-        #     print(i)
+        self.cards = {}
+
+        for c in Assets.CARDS:
+            card = Card(c)
+            self.cards[card.color + card.number] = card
+
+        print(self.cards)
 
     def play(self):
         self.alerts = []

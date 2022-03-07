@@ -73,6 +73,7 @@ class Client:
             if len(self.send_msg_queue) > 0:
                 msg = self.send_msg_queue.pop(0)
                 self.send_msg(msg)
+                print(f"Sent message: {msg}")
 
     def receive_msg_thread(self):
         while True:

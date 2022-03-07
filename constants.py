@@ -68,6 +68,8 @@ class Assets:
     CARDS = [f"card{i}.png" if i > 9 else
              f"card0{i}.png" for i in range(1, 57)]
 
+    CARD_BACK = pygame.image.load(os.path.join("assets", "back.png"))
+
 
 class State(Enum):
     LOBBY = auto()

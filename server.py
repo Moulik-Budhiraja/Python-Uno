@@ -90,6 +90,7 @@ class Server:
                     self.send_to_client(response, conn)
 
                 elif msg.type == MessageType.PLAYER_READY:
+                    # ? Not quite sure whats happening here but its very colourful
                     self.game.ready_players.append(player)
 
                     self.game.update_players_lists()
@@ -98,6 +99,7 @@ class Server:
                         self.game.start_game()
 
                 elif msg.type == MessageType.PLAYER_UNREADY:
+                    # ! this doesn't work
                     self.game.ready_players.remove(player)
 
                     self.game.update_players_lists()
@@ -192,10 +194,60 @@ class Player:
         }
 
 
-# 558 height
-# 1 seperator
-# 357 card width
-# 2 seperator
+class Deck:
+    def __init__(self):
+        self.cards = []
+        self.pile = []
+
+        for c in ("R", "Y", "G", "B"):
+            for i in range(0, 10):
+                if i == 0:
+                    self.cards.append(c + "0")
+                elif i == 10:
+                    self.cards.append(c + "skip")
+                elif i == 11:
+                    self.cards.append(c + "flip")
+                elif i == 12:
+                    self.cards.append(c + "draw2")
+                else:
+                    self.cards.append(c + str(i))
+                    self.cards.append(c + str(i))
+
+        for i in range(4):
+            self.cards.append("Wwild")
+            self.cards.append("Wdraw4")
+
+    def shuffle(self):
+        random.shuffle(self.cards)
+
+    def draw(self):
+        return self.cards.pop()
+
+    def reshuffle(self):
+        # Take from pile and put in cards
+        count = 1
+        last_card = None
+        for card in self.pile[::-1]:
+            if last_card == None:
+                last_card = card
+                continue
+
+            if card[1:] == last_card[1:]:
+                count += 1
+                last_card = card
+            else:
+                break
+
+        self.cards.extend(self.pile[:-count])
+        self.pile = self.pile[-count:]
+
+        self.shuffle()
+
+    def deal(self, player):
+        pass
+
+
 if __name__ == "__main__":
-    server = Server()
+    server = Server(ip="127.0.0.1")
     server.start()
+
