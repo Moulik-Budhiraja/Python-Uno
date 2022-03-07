@@ -2,6 +2,7 @@ import socket
 import threading
 from message import Message, MessageType
 import uuid
+import random
 
 
 class Server:
@@ -19,18 +20,25 @@ class Server:
 
         self.game = Game(self)
 
+        self.connections = {}
+
     def start(self):
         print(f"[STARTING] Server is starting on {self.IP}:{self.PORT}")
 
         self.server.listen()
         while True:
             conn, addr = self.server.accept()
+
+            self.connections[addr] = conn
+
             thread = threading.Thread(
                 target=self.handle_client, args=(conn, addr))
             thread.start()
+
             print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
 
     def handle_client(self, conn, addr):
+        # Send the client their own id
         player = Player(addr, self.game)
 
         response = Message("Server", MessageType.DATA, {"id": player.id})
@@ -38,33 +46,61 @@ class Server:
 
         connected = True
         while connected:
-            msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
+            try:
+                msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
+            except ConnectionResetError:
+                connected = False
+                self.game.remove_player(player.id)
+                self.game.update_players_lists()
+                break
             if msg_length:
                 # Recieve the message
                 msg_length = int(msg_length)
                 msg = conn.recv(msg_length)
                 msg = Message.decode(msg)
 
+                print(msg)
+
                 # Handle the message
                 if msg.type == MessageType.DISCONNECT:
                     connected = False
-                    print(f"[DISCONNECT] {msg.author} disconnected.")
+                    self.game.remove_player(player.id)
+                    self.game.update_players_lists()
 
                 elif msg.type == MessageType.CONNECT:
                     # Get player info
                     if not self.game.active:
+                        player.name = msg.content["name"]
                         self.game.players.append(player)
-                        content = [player.dict for player in self.game.players]
 
-                        response = Message(
-                            "Server", MessageType.RESPONSE, content)
-                        self.send_to_client(response, conn)
+                        self.game.update_players_lists()
+
                     else:
                         response = Message("Server", MessageType.FORBIDDEN)
                         self.send_to_client(response, conn)
 
                 elif msg.type == MessageType.GET_PLAYERS:
-                    pass
+                    response = Message("Server", MessageType.PLAYER_LIST,
+                                       {
+                                           "players": [p.dict for p in self.game.players],
+                                           "ready players": [p.id for p in self.game.ready_players]
+                                       }
+                                       )
+
+                    self.send_to_client(response, conn)
+
+                elif msg.type == MessageType.PLAYER_READY:
+                    self.game.ready_players.append(player)
+
+                    self.game.update_players_lists()
+
+                    if len(self.game.ready_players) == len(self.game.players) and len(self.game.players) > 1:
+                        self.game.start_game()
+
+                elif msg.type == MessageType.PLAYER_UNREADY:
+                    self.game.ready_players.remove(player)
+
+                    self.game.update_players_lists()
 
                 elif msg.type == MessageType.GET_CARDS:
                     pass
@@ -76,6 +112,9 @@ class Server:
         conn.send(msg.length)
         conn.send(msg.encoded)
 
+        print(
+            f"[SEND] {msg.author} sent {msg.type} with content {msg.content}")
+
 
 class Game:
     def __init__(self, server):
@@ -85,11 +124,49 @@ class Game:
 
         self.players = []
 
+        self.ready_players = []
+
     def start(self):
         pass
 
     def end(self):
         pass
+
+    def update_players_lists(self):
+        for player in self.players:
+            response = Message("Server", MessageType.PLAYER_LIST, {
+                "players": [p.dict for p in self.players],
+                "ready players": [p.id for p in self.ready_players]
+            })
+
+            self.server.send_to_client(
+                response, server.connections[player.addr])
+
+    def remove_player(self, id):
+        for count, i in enumerate(self.players):
+            if i.id == id:
+                if i in self.ready_players:
+                    self.ready_players.remove(i)
+                self.players.pop(count)
+                break
+
+        if len(self.players) == 0:
+            self.active = False
+
+    def start_game(self):
+        self.active = True
+
+        random.shuffle(self.players)
+
+        content = {
+            "turn order": [p.id for p in self.players]
+        }
+
+        response = Message("Server", MessageType.GAME_START, content)
+
+        for player in self.players:
+            self.server.send_to_client(
+                response, self.server.connections[player.addr])
 
 
 class Player:
@@ -109,11 +186,9 @@ class Player:
     @property
     def dict(self):
         return {
-            "players": {
-                "name": self.name,
-                "id": self.id,
-                "cards": self.num_cards
-            }
+            "name": self.name,
+            "id": self.id,
+            "cards": self.num_cards
         }
 
 
@@ -121,7 +196,6 @@ class Player:
 # 1 seperator
 # 357 card width
 # 2 seperator
-
 if __name__ == "__main__":
     server = Server()
     server.start()

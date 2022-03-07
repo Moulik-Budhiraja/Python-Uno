@@ -4,6 +4,7 @@ from enum import Enum, auto
 
 
 class MessageType(Enum):
+    """What the message is requesting or sending"""
     POST_CARD = auto()
     GET_CARDS = auto()
     GET_PLAYERS = auto()
@@ -14,6 +15,21 @@ class MessageType(Enum):
     RESPONSE = auto()
     BLANK = auto()
     DATA = auto()
+    PLAYER_LIST = auto()
+    PLAYER_JOINED = auto()
+    PLAYER_LEFT = auto()
+    PLAYER_READY = auto()
+    PLAYER_UNREADY = auto()
+    GAME_START = auto()
+    PLAYER_ORDER = auto()
+    CARDS = auto()
+    PLAYER_CARDS = auto()
+    ACTIVE_CARD = auto()
+    CARD_PLAYED = auto()
+    CARD_SELECTED = auto()
+    PICKUP_CARDS = auto()
+    UNO = auto()
+    WINNER = auto()
 
 
 class Message:
@@ -43,3 +59,6 @@ class Message:
     @staticmethod
     def decode(encoded_msg: bytes) -> "Message":
         return pickle.loads(encoded_msg)
+
+    def __repr__(self) -> str:
+        return f"<Message {self.type} from {self.author} with content {self.content}>"

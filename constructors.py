@@ -5,6 +5,8 @@ from math import cos, pi
 import time
 import re
 
+pygame.init()
+
 
 class TextBox:
     def __init__(self, width, height, x=0, y=0, defualt="", max_input=None, show=False):
@@ -289,3 +291,147 @@ class Button:
                 if self.enlarged:
                     self.rect.inflate_ip(-enlarge, -enlarge)
                     self.enlarged = False
+
+
+class Text:
+    def __init__(self, x, y, text, color=(240, 240, 240), font="Lato", size=40, show=False):
+        self.x = x
+        self.y = y
+        self.text = text
+        self.color = color
+        self.size = size
+
+        self.font = pygame.font.SysFont(font, self.size)
+
+        self.show = show
+
+    def draw(self, win):
+        if not self.show:
+            return
+
+        text = self.font.render(
+            self.text, True, self.color)
+
+        win.blit(text, (self.x, self.y))
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, value):
+        self._x = value
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, value):
+        self._y = value
+
+    @property
+    def width(self):
+        text = self.font.render(self.text, True, self.color)
+
+        return text.get_width()
+
+    @property
+    def height(self):
+        text = self.font.render(self.text, True, self.color)
+
+        return text.get_height()
+
+
+class Card:
+    colors = {"0": "R", "1": "Y", "2": "G", "3": "B"}
+
+    def __init__(self, name, x=0, y=0, width=None, height=None):
+        self.name = name
+        self.path = os.path.join("assets", "cards", name)
+        self.image = Image(pygame.image.load(self.path))
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+        self.show = False
+
+        try:
+            self.color = self.colors[str(
+                int(name[4:6]) - 1)[0] if len(str(int(name[4:6]) - 1)) != 1 else "0"]
+        except KeyError:
+            if self.name[4:6] in ["41", "42", "43"]:
+                self.color = "R"
+            elif self.name[4:6] in ["44", "45", "46"]:
+                self.color = "Y"
+            elif self.name[4:6] in ["47", "48", "49"]:
+                self.color = "G"
+            elif self.name[4:6] in ["50", "51", "52"]:
+                self.color = "B"
+            elif self.name[4:6] in ["53", "54", "55", "56"]:
+                self.color = None
+
+        if int(self.name[4:6]) in range(1, 41):
+            self.number = self.name[5]
+        elif int(self.name[4:6]) in range(41, 53):
+            if int(self.name[5]) % 3 == 0:
+                self.number = "flip"
+            elif int(self.name[5]) % 3 == 1:
+                self.number = "pick2"
+            elif int(self.name[5]) % 3 == 2:
+                self.number = "skip"
+
+        elif int(self.name[4:6]) in range(53, 55):
+            self.number = "wild"
+        elif int(self.name[4:6]) in range(55, 57):
+            self.number = "wild4"
+
+    def __repr__(self):
+        return f"Card({self.color}{self.number})"
+
+    @property
+    def x(self):
+        return self.image.x
+
+    @x.setter
+    def x(self, value):
+        self.image.x = value
+
+    @property
+    def y(self):
+        return self.image.y
+
+    @y.setter
+    def y(self, value):
+        self.image.y = value
+
+    @property
+    def width(self):
+        return self.image.width
+
+    @width.setter
+    def width(self, value):
+        self.image.width = value
+
+    @property
+    def height(self):
+        return self.image.height
+
+    @height.setter
+    def height(self, value):
+        self.image.height = value
+
+    @property
+    def show(self):
+        return self.image.show
+
+    @show.setter
+    def show(self, value):
+        self.image.show = value
+
+    def draw(self, win):
+        if not self.show:
+            return
+
+        self.image.draw(win)

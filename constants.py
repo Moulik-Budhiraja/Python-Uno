@@ -1,4 +1,5 @@
 import pygame
+from enum import Enum, auto
 import os
 pygame.init()
 
@@ -63,3 +64,13 @@ class Assets:
 
     LOADING = pygame.transform.rotate(pygame.transform.scale(pygame.image.load(
         os.path.join("assets", "loading.png")), (50, 50)), 180)
+
+    CARDS = [f"card{i}.png" if i > 9 else
+             f"card0{i}.png" for i in range(1, 57)]
+
+
+class State(Enum):
+    LOBBY = auto()
+    PLAYING = auto()
+    END = auto()
+    UNKNOWN = auto()

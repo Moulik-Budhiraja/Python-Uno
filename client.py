@@ -46,7 +46,9 @@ class Client:
             target=self.receive_msg_thread, daemon=True)
         receive_msgs.start()
 
-        lst.append(Player(msg.content["id"]))
+        self.player = Player(msg.content["id"])
+
+        lst.append(self.player)
 
     def disconnect(self) -> None:
         """
