@@ -299,6 +299,10 @@ class Game:
 
         self.game_state = GameState([])
 
+        self.scheduled_animations = []
+        self.queued_animations = []
+        self.active_animation = None
+
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -386,7 +390,8 @@ class Game:
                                     i.show = False
 
                                 self.load.show = True
-                                self.client = Client(self.ip_input.text)
+                                self.client = Client(
+                                    self.ip_input.text, server_port=6969)
                                 self.player = []
                                 connection = threading.Thread(
                                     target=self.client.connect, args=(self.player,))
@@ -432,7 +437,7 @@ class Game:
             try:
                 if self.client.connected:
                     if type(self.player) == list and len(self.player) > 0:
-                        self.player = self.player[0]
+                        self.player: Player = self.player[0]
                         self.player.name = self.name.text
 
                         request = Message(
@@ -452,15 +457,16 @@ class Game:
 
                     if self.game_state.state != State.UNKNOWN:
                         if not len(self.client.receive_msg_queue) == 0:
-                            message = self.client.receive_msg_queue.pop(0)
-                            print(message, time.time(), "\n")
+                            message: Message = self.client.receive_msg_queue.pop(
+                                0)
+                            # print(message, time.time(), "\n")
 
                             if message.type == MessageType.PLAYER_LIST:
                                 self.game_state.players = [
                                     Player(p["id"], p["name"]) for p in message.content["players"]]
                                 try:
                                     self.game_state.ready_players = message.content["ready players"]
-                                    print(self.game_state.players)
+                                    # print(self.game_state.players)
                                 except Exception as e:
                                     raise e
 
@@ -495,17 +501,31 @@ class Game:
                                 self.game_state.state = State.PLAYING
                                 self.unready_transition.start()
 
-                                # More transitions
-                                self.name_transitions = []
                                 time_offset = 0
 
                                 for name in self.player_names:
-                                    self.name_transitions.append(
+                                    self.scheduled_animations.append(
                                         Transition(name.x, name.y, -400, name.y, name, 0.4, time.time() + time_offset))
 
                                     time_offset += 0.2
 
-                                self.wait_for_animations = time.time() + (len(self.name_transitions) * 0.2)
+                                self.game_state.turn_order = message.content["turn order"]
+                                self.player.hand = [self.cards[c]
+                                                    for c in message.content["cards"]]
+                                self.game_state.player_cards = message.content["opponents cards"]
+                                self.game_state.current_card = self.cards[message.content["active card"]]
+                                self.game_state.turn = message.content["turn"]
+
+                                for card in self.player.hand:
+                                    pass
+
+                            elif message.type == MessageType.GET_CARDS:
+                                # Idk why I'm calling stuff different on the client and server
+
+                                self.player.hand = self.cards[message.content["cards"]]
+                                self.game_state.player_cards = message.content["opponents cards"]
+                                self.game_state.current_card = self.cards[message.content["active card"]]
+                                self.game_state.turn = message.content["turn"]
 
                             elif message.type == MessageType.FORBIDDEN:
                                 self.game_full.show = True
@@ -514,6 +534,10 @@ class Game:
 
                                 self.back_to_home.show = True
                                 self.back_to_home_transition.start()
+
+                            elif message.type == MessageType.PING:
+                                self.client.send_msg_queue.append(
+                                    Message(self.player.id, MessageType.PING))
 
             except AttributeError as e:
                 if self.game_state.state == State.LOBBY:
@@ -550,6 +574,18 @@ class Game:
             except AttributeError as e:
                 # print(e)
                 pass
+
+            for i in self.scheduled_animations:
+                i.update()
+
+            if len(self.queued_animations) != 0:
+                self.load.show_for(0.1)
+                if self.active_animation is None or not self.active_animation.move:
+                    self.active_animation = self.queued_animations.pop(0)
+                    self.active_animation.start()
+
+            if self.active_animation is not None:
+                self.active_animation.update()
 
             window.draw()
             window.update()

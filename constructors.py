@@ -1,3 +1,4 @@
+from xmlrpc.client import Server
 from matplotlib.pyplot import draw
 import pygame
 from constants import *
@@ -158,7 +159,6 @@ class Loading:
     def update(self):
         if self.show:
             self.angle -= abs(cos(self.angle / 2 * (pi / 180))) * 8 + 1.01
-
             if self.angle > 720:
                 self.angle = 0
 
@@ -439,8 +439,25 @@ class Card:
     def show(self, value):
         self.image.show = value
 
+    @property
+    def server_card(self):
+        return ServerCard(self)
+
     def draw(self, win):
         if not self.show:
             return
 
         self.image.draw(win)
+
+    def is_hover(self, pos):
+        if not self.show:
+            return False
+
+        return self.image.is_hover(pos)
+
+
+class ServerCard:
+    def __init__(self, card: Card):
+        self.color = card.color
+        self.number = card.number
+        self.value = card.color + card.number

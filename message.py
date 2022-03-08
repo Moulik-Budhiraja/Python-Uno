@@ -30,6 +30,7 @@ class MessageType(Enum):
     PICKUP_CARDS = auto()
     UNO = auto()
     WINNER = auto()
+    PING = auto()
 
 
 class Message:
